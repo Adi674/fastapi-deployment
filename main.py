@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from detection import run_webcam_detection
+from fastapi import FastAPI, UploadFile, File
+import numpy as np
+import cv2
 
 app = FastAPI()
 
@@ -7,11 +10,14 @@ app = FastAPI()
 def read_root():
     return {"message": "Webcam Object Detection API is running!"}
 
-@app.get("/start_detection")
-async def start_detection():
-    anomalies, anomaly_image = run_webcam_detection()
-    return {"anomalies": anomalies, "anomaly_image": anomaly_image}
+@app.post("/start_detection") 
+async def start_detection(file: UploadFile = File(...)):
+    # Read image from request
+    image_bytes = await file.read()
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.1", port=8000)
+    # Run detection
+    anomalies, anomaly_image = run_webcam_detection(frame)
+
+    return {"anomalies": anomalies, "anomaly_image": anomaly_image.tolist()}
